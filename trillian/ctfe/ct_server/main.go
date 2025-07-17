@@ -24,6 +24,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
 	"net/http"
 	"os"
 	"os/signal"
@@ -136,6 +137,7 @@ func main() {
 	}
 
 	klog.CopyStandardLogTo("WARNING")
+	klog.Info("Using custom local build of CTFE")
 	klog.Info("**** CT HTTP Server Starting ****")
 
 	metricsAt := *metricsEndpoint
@@ -448,7 +450,7 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
-		mux.Handle(lhp+path, handler)
+		mux.Handle(lhp+path, logging.Middleware(handler))
 	}
 	return inst, nil
 }
