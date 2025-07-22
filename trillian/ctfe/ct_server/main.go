@@ -24,7 +24,6 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,6 +32,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
 
 	"github.com/google/certificate-transparency-go/trillian/ctfe"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/cache"
@@ -137,7 +138,7 @@ func main() {
 	}
 
 	klog.CopyStandardLogTo("WARNING")
-	klog.Info("Using custom local build of CTFE")
+
 	klog.Info("**** CT HTTP Server Starting ****")
 
 	metricsAt := *metricsEndpoint
