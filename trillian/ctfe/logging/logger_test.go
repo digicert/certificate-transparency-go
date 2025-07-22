@@ -123,8 +123,12 @@ func TestWithGRPCContextFromMetadata(t *testing.T) {
 	if txID != "metadata-tx-id" {
 		t.Errorf("Expected transaction ID from metadata 'metadata-tx-id', got %v", txID)
 	}
-	if spanID != "metadata-span-id" {
-		t.Errorf("Expected span ID from metadata 'metadata-span-id', got %v", spanID)
+	// Span ID should be newly generated, not from metadata (each service gets its own span)
+	if spanID == "metadata-span-id" {
+		t.Errorf("Expected new span ID to be generated, but got metadata span ID: %v", spanID)
+	}
+	if spanID == "" {
+		t.Error("Expected new span ID to be generated, but got empty string")
 	}
 }
 
@@ -271,10 +275,10 @@ func TestPropagateToGRPC(t *testing.T) {
 		t.Errorf("Expected X-Transaction-ID 'propagate-tx-id', got %v", txIDs)
 	}
 
-	// Check that span ID was added to metadata
+	// Check that span ID was NOT added to metadata (new design)
 	spanIDs := md.Get("X-Span-ID")
-	if len(spanIDs) != 1 || spanIDs[0] != "propagate-span-id" {
-		t.Errorf("Expected X-Span-ID 'propagate-span-id', got %v", spanIDs)
+	if len(spanIDs) != 0 {
+		t.Errorf("Expected no X-Span-ID in metadata, but got %v", spanIDs)
 	}
 
 	// Test with empty context (should return same context)
