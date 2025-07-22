@@ -54,13 +54,12 @@ func WithGRPCContext(ctx context.Context) context.Context {
 		}
 	}
 
-	// Check for span_id in context first, then metadata
+	// Check for span_id in context first
 	spanID, ok := ctx.Value(CtxKeySpanID).(string)
 	if !ok || spanID == "" {
-		spanID = getFromMetadata(ctx, "X-Span-ID")
-		if spanID == "" {
-			spanID = generateUUID()
-		}
+		// Always generate a new span_id for this service
+		// No longer checking metadata since span_id is not propagated
+		spanID = generateUUID()
 	}
 
 	ctx = context.WithValue(ctx, CtxKeyTxID, txID)
@@ -80,23 +79,20 @@ func getFromMetadata(ctx context.Context, key string) string {
 	return ""
 }
 
-// PropagateToGRPC adds the transaction_id and span_id from the context to gRPC metadata
-// This should be called when making outgoing gRPC calls from HTTP handlers
+// PropagateToGRPC adds the transaction_id from the context to gRPC metadata
+// This ensures transaction correlation across service boundaries
+// Note: span_id is NOT propagated - each service generates its own span_id
 func PropagateToGRPC(ctx context.Context) context.Context {
 	txID := ctx.Value(CtxKeyTxID)
-	spanID := ctx.Value(CtxKeySpanID)
 
-	if txID == nil && spanID == nil {
+	if txID == nil {
 		return ctx
 	}
 
-	mdMap := make(map[string]string)
-	if txID != nil {
-		mdMap["X-Transaction-ID"] = txID.(string)
+	mdMap := map[string]string{
+		"X-Transaction-ID": txID.(string),
 	}
-	if spanID != nil {
-		mdMap["X-Span-ID"] = spanID.(string)
-	}
+	// Deliberately NOT propagating span_id - each service gets its own
 
 	md := metadata.New(mdMap)
 	return metadata.NewOutgoingContext(ctx, md)
