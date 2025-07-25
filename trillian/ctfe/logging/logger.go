@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +30,13 @@ func init() {
 
 func generateUUID() string {
 	return uuid.New().String()
+}
+
+// sanitizeLogMessage removes or replaces characters that could be used for log injection
+func sanitizeLogMessage(msg string) string {
+	msg = strings.ReplaceAll(msg, "\n", "\\n")
+	msg = strings.ReplaceAll(msg, "\r", "\\r")
+	return msg
 }
 
 func WithContext(r *http.Request) context.Context {
@@ -114,7 +122,9 @@ func LogWithContext(ctx context.Context, eventID string, msg string, fields map[
 	for k, v := range fields {
 		lf[k] = v
 	}
-	log.WithFields(lf).Info(msg)
+	// Sanitize the message to prevent log injection
+	sanitizedMsg := sanitizeLogMessage(msg)
+	log.WithFields(lf).Info(sanitizedMsg)
 }
 
 func LogTiming(ctx context.Context, r *http.Request, status int, elapsed time.Duration) {
