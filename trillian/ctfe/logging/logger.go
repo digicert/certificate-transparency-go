@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,25 +32,16 @@ func generateUUID() string {
 	return uuid.New().String()
 }
 
-// isReasonableTransactionID performs basic validation for propagation safety
-// Rejects empty, too long, or obviously malicious values
-func isReasonableTransactionID(txID string) bool {
-	if txID == "" || len(txID) > 128 {
-		return false
-	}
-	// Reject values with control characters that could cause issues
-	for _, r := range txID {
-		if r < 32 || r == 127 {
-			return false
-		}
-	}
-	return true
+// sanitizeLogMessage removes or replaces characters that could be used for log injection
+func sanitizeLogMessage(msg string) string {
+	msg = strings.ReplaceAll(msg, "\n", "\\n")
+	msg = strings.ReplaceAll(msg, "\r", "\\r")
+	return msg
 }
 
 func WithContext(r *http.Request) context.Context {
 	txID := r.Header.Get("X-Transaction-ID")
-	if txID == "" || !isReasonableTransactionID(txID) {
-		// If no header or user-provided txID looks suspicious, generate a new one
+	if txID == "" {
 		txID = generateUUID()
 	}
 
@@ -65,8 +57,7 @@ func WithGRPCContext(ctx context.Context) context.Context {
 	if !ok || txID == "" {
 		// If not, try to get it from gRPC metadata
 		txID = getFromMetadata(ctx, "X-Transaction-ID")
-		if txID == "" || !isReasonableTransactionID(txID) {
-			// If no metadata or gRPC metadata txID looks suspicious, generate a new one
+		if txID == "" {
 			txID = generateUUID()
 		}
 	}
@@ -99,7 +90,6 @@ func getFromMetadata(ctx context.Context, key string) string {
 // PropagateToGRPC adds the transaction_id from the context to gRPC metadata
 // This ensures transaction correlation across service boundaries
 // Note: span_id is NOT propagated - each service generates its own span_id
-// Note: transaction_id values are validated at input to prevent propagation of malicious values
 func PropagateToGRPC(ctx context.Context) context.Context {
 	txID := ctx.Value(CtxKeyTxID)
 
@@ -132,8 +122,9 @@ func LogWithContext(ctx context.Context, eventID string, msg string, fields map[
 	for k, v := range fields {
 		lf[k] = v
 	}
-	// JSONFormatter automatically handles escaping, preventing log injection
-	log.WithFields(lf).Info(msg)
+	// Sanitize the message to prevent log injection
+	sanitizedMsg := sanitizeLogMessage(msg)
+	log.WithFields(lf).Info(sanitizedMsg)
 }
 
 func LogTiming(ctx context.Context, r *http.Request, status int, elapsed time.Duration) {
