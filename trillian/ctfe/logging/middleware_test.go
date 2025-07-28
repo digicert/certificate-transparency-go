@@ -48,9 +48,9 @@ func TestMiddleware(t *testing.T) {
 	// Create a test handler that we'll wrap with our middleware
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check that context was added to the request
-		txID := r.Context().Value(CtxKeyTxID)
-		if txID == nil {
-			t.Error("Request context doesn't contain transaction ID")
+		traceID := r.Context().Value(CtxKeyTraceID)
+		if traceID == nil {
+			t.Error("Request context doesn't contain trace ID")
 		}
 
 		spanID := r.Context().Value(CtxKeySpanID)
@@ -132,16 +132,16 @@ func TestMiddleware(t *testing.T) {
 	}
 }
 
-// TestMiddlewareWithExistingTransactionID tests middleware when request already has transaction ID
-func TestMiddlewareWithExistingTransactionID(t *testing.T) {
+// TestMiddlewareWithExistingTraceID tests middleware when request already has trace ID
+func TestMiddlewareWithExistingTraceID(t *testing.T) {
 	hook := test.NewLocal(log)
 
 	// Create a test handler
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check that the existing transaction ID was preserved
-		txID := r.Context().Value(CtxKeyTxID)
-		if txID != "existing-tx-123" {
-			t.Errorf("Expected existing transaction ID 'existing-tx-123', got %v", txID)
+		// Check that the existing trace ID was preserved
+		traceID := r.Context().Value(CtxKeyTraceID)
+		if traceID != "abcdef1234567890abcdef1234567890" {
+			t.Errorf("Expected existing trace ID 'abcdef1234567890abcdef1234567890', got %v", traceID)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -150,9 +150,9 @@ func TestMiddlewareWithExistingTransactionID(t *testing.T) {
 	// Wrap with middleware
 	wrappedHandler := Middleware(testHandler)
 
-	// Create request with existing transaction ID
+	// Create request with existing trace ID via x-trace-id header
 	req := httptest.NewRequest("POST", "/api/submit", strings.NewReader("test data"))
-	req.Header.Set("X-Transaction-ID", "existing-tx-123")
+	req.Header.Set("x-trace-id", "abcdef1234567890abcdef1234567890")
 
 	w := httptest.NewRecorder()
 	wrappedHandler.ServeHTTP(w, req)
@@ -164,8 +164,8 @@ func TestMiddlewareWithExistingTransactionID(t *testing.T) {
 	}
 
 	entry := hook.LastEntry()
-	if entry.Data["transaction_id"] != "existing-tx-123" {
-		t.Errorf("Expected transaction_id 'existing-tx-123', got %v", entry.Data["transaction_id"])
+	if entry.Data["trace_id"] != "abcdef1234567890abcdef1234567890" {
+		t.Errorf("Expected trace_id 'abcdef1234567890abcdef1234567890', got %v", entry.Data["trace_id"])
 	}
 }
 
