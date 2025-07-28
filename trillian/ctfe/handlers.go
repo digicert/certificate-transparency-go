@@ -40,7 +40,6 @@ import (
 	"github.com/google/trillian/monitoring"
 	"github.com/google/trillian/types"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/prototext"
 	"k8s.io/klog/v2"
@@ -200,18 +199,9 @@ func (a AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Many/most of the handlers forward the request on to the Log RPC server; impose a deadline
 	// on this onward request.
 	ctx, cancel := context.WithDeadline(logCtx, getRPCDeadlineTime(a.Info))
-	txID, ok := logCtx.Value(logging.CtxKeyTxID).(string)
-	if !ok || txID == "" {
-		klog.Warning("Missing transaction_id in context")
-		txID = "unknown"
-	}
-	spanID, ok := logCtx.Value(logging.CtxKeySpanID).(string)
-	if !ok || spanID == "" {
-		klog.Warning("Missing span_id in context")
-		spanID = "unknown"
-	}
-	md := metadata.Pairs("X-Transaction-ID", txID, "X-Span-ID", spanID)
-	ctx = metadata.NewOutgoingContext(ctx, md)
+	
+	// Use our standard trace propagation function
+	ctx = logging.PropagateToGRPC(ctx)
 	defer cancel()
 
 	var err error
