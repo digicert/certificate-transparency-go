@@ -51,12 +51,12 @@ func extractTraceID(r *http.Request) string {
 			return parts[1] // Extract the trace_id part
 		}
 	}
-	
+
 	// Fallback to direct trace ID header
 	if traceID := r.Header.Get("x-trace-id"); traceID != "" {
 		return normalizeToHex(traceID)
 	}
-	
+
 	return ""
 }
 
@@ -64,7 +64,7 @@ func normalizeToHex(id string) string {
 	// Remove hyphens from UUID format and convert to lowercase
 	normalized := strings.ReplaceAll(id, "-", "")
 	normalized = strings.ToLower(normalized)
-	
+
 	// Ensure it's 32 characters for trace ID (pad or truncate if needed)
 	if len(normalized) > 32 {
 		return normalized[:32]
@@ -146,10 +146,14 @@ func LogWithContext(ctx context.Context, eventID string, msg string, fields map[
 
 	// Extract trace_id and span_id using standard OpenTelemetry field names
 	if traceID := ctx.Value(CtxKeyTraceID); traceID != nil {
-		lf["trace_id"] = traceID
+		sanitizedTraceID := strings.ReplaceAll(traceID.(string), "\n", "")
+		sanitizedTraceID = strings.ReplaceAll(sanitizedTraceID, "\r", "")
+		lf["trace_id"] = sanitizedTraceID
 	}
 	if spanID := ctx.Value(CtxKeySpanID); spanID != nil {
-		lf["span_id"] = spanID
+		sanitizedSpanID := strings.ReplaceAll(spanID.(string), "\n", "")
+		sanitizedSpanID = strings.ReplaceAll(sanitizedSpanID, "\r", "")
+		lf["span_id"] = sanitizedSpanID
 	}
 
 	for k, v := range fields {
