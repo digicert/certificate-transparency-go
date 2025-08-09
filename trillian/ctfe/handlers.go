@@ -32,7 +32,8 @@ import (
 
 	"github.com/google/certificate-transparency-go/asn1"
 	"github.com/google/certificate-transparency-go/tls"
-	"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
+
+	//"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
 	"github.com/google/certificate-transparency-go/trillian/util"
 	"github.com/google/certificate-transparency-go/x509"
 	"github.com/google/certificate-transparency-go/x509util"
@@ -199,9 +200,6 @@ func (a AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Many/most of the handlers forward the request on to the Log RPC server; impose a deadline
 	// on this onward request.
 	ctx, cancel := context.WithDeadline(logCtx, getRPCDeadlineTime(a.Info))
-	
-	// Use our standard trace propagation function
-	ctx = logging.PropagateToGRPC(ctx)
 	defer cancel()
 
 	var err error

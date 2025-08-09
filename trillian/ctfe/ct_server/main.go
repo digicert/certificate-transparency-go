@@ -33,10 +33,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
-
+	//"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
+	"github.com/digicert/ctutils/logging"
 	"github.com/google/certificate-transparency-go/trillian/ctfe"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/cache"
+	"github.com/google/certificate-transparency-go/trillian/ctfe/config"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/configpb"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
@@ -99,6 +100,9 @@ func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
 	ctx := context.Background()
+
+	// Initialize logging with OpenTelemetry support
+	config.InitLogging()
 
 	keys.RegisterHandler(&keyspb.PEMKeyFile{}, pem.FromProto)
 	keys.RegisterHandler(&keyspb.PrivateKey{}, der.FromProto)
