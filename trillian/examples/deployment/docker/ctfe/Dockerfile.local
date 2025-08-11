@@ -1,16 +1,29 @@
+
 FROM golang:1.24.4-bookworm@sha256:8faa537d0690017d8000e38e1ed9ed4c5990d40a3022ce2596a825c6c87f62c4 as build
 
 WORKDIR /build
 
+ENV GOPRIVATE=github.com/digicert/ctutils
+
+
 COPY . .
 
-# Download all dependencies
-RUN --mount=type=cache,target=/go/pkg/mod \
+# Use SSH for private repo access
+RUN git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
+
+# Trust GitHub host key for SSH
+RUN mkdir -p ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+# Download all dependencies (with SSH mount)
+RUN --mount=type=ssh --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-RUN go build -mod=mod ./trillian/ctfe/ct_server
+# Build the server with optimizations
+RUN --mount=type=ssh --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -mod=mod -trimpath -ldflags="-s -w" -o ct_server ./trillian/ctfe/ct_server
 
 # Save licenses
+RUN go mod download github.com/google/go-licenses/v2
 RUN go run github.com/google/go-licenses/v2 save ./trillian/ctfe/ct_server --save_path /THIRD_PARTY_NOTICES
 
 FROM gcr.io/distroless/base-debian12@sha256:201ef9125ff3f55fda8e0697eff0b3ce9078366503ef066653635a3ac3ed9c26
