@@ -52,6 +52,7 @@ import (
 	"github.com/tomasen/realip"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -97,11 +98,13 @@ const unknownRemoteUser = "UNKNOWN_REMOTE"
 
 // nolint:staticcheck
 func main() {
+	fmt.Println("ctfe main.go")
 	klog.InitFlags(nil)
 	flag.Parse()
 	ctx := context.Background()
 
 	// Initialize logging with OpenTelemetry support
+	fmt.Println("ctfe main.go: Initializing logging")
 	config.InitLogging()
 
 	keys.RegisterHandler(&keyspb.PEMKeyFile{}, pem.FromProto)
@@ -151,6 +154,10 @@ func main() {
 	}
 
 	dialOpts := []grpc.DialOption{}
+	// Add OpenTelemetry gRPC client interceptor
+	dialOpts = append(dialOpts,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	)
 	if *trillianTLSCACertFile != "" {
 		creds, err := credentials.NewClientTLSFromFile(*trillianTLSCACertFile, "")
 		if err != nil {
@@ -301,13 +308,14 @@ func main() {
 		}
 	})
 
+	// HP: Commenting out the healthz target
 	// Export a healthz target.
-	corsMux.HandleFunc("/healthz", func(resp http.ResponseWriter, req *http.Request) {
-		// TODO(al): Wire this up to tell the truth.
-		if _, err := resp.Write([]byte("ok")); err != nil {
-			klog.Errorf("resp.Write(): %v", err)
-		}
-	})
+	// corsMux.HandleFunc("/healthz", func(resp http.ResponseWriter, req *http.Request) {
+	// 	// TODO(al): Wire this up to tell the truth.
+	// 	if _, err := resp.Write([]byte("ok")); err != nil {
+	// 		klog.Errorf("resp.Write(): %v", err)
+	// 	}
+	// })
 
 	if metricsAt != *httpEndpoint {
 		// Run a separate handler for metrics.
@@ -455,6 +463,7 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
+		fmt.Println("ctfe main.go: Registering handler for path and middleware:", lhp+path)
 		mux.Handle(lhp+path, logging.Middleware(handler))
 	}
 	return inst, nil
