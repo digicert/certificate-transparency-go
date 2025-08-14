@@ -4,9 +4,12 @@ go 1.23.0
 
 toolchain go1.24.1
 
+replace github.com/digicert/ctutils => ../ctutils
+
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/digicert/ctutils v0.1.2
+	// require github.com/digicert/ctutils v0.1.2 // commented out for localreplace: use local ctutils for development
 	github.com/fullstorydev/grpcurl v1.9.3
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/mock v1.7.0-rc.1
