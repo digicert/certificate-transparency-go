@@ -477,7 +477,6 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
-		fmt.Println("ctfe main.go: Registering handler for path and middleware:", lhp+path)
 		mux.Handle(lhp+path, logging.Middleware(handler))
 	}
 	return inst, nil
