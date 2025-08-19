@@ -345,7 +345,6 @@ func main() {
 			}
 			srv = http.Server{Addr: *httpEndpoint, Handler: handler, TLSConfig: tlsConfig}
 		} else {
-			fmt.Printf("ctfe main.go: HTTP handler type: %T\n", handler)
 			srv = http.Server{Addr: *httpEndpoint, Handler: handler}
 		}
 	} else {
@@ -360,11 +359,9 @@ func main() {
 				MinVersion:   tls.VersionTLS12,
 			}
 			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
-			fmt.Printf("ctfe main.go: 30: HTTP handler type: %T\n", wrappedHandler)
 			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler, TLSConfig: tlsConfig}
 		} else {
 			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
-			fmt.Printf("ctfe main.go: 40: HTTP handler type: %T\n", wrappedHandler)
 			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler}
 		}
 	}
