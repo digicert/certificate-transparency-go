@@ -305,14 +305,13 @@ func main() {
 		}
 	})
 
-	// HP: Commenting out the healthz target
 	// Export a healthz target.
-	// corsMux.HandleFunc("/healthz", func(resp http.ResponseWriter, req *http.Request) {
-	// 	// TODO(al): Wire this up to tell the truth.
-	// 	if _, err := resp.Write([]byte("ok")); err != nil {
-	// 		klog.Errorf("resp.Write(): %v", err)
-	// 	}
-	// })
+	corsMux.HandleFunc("/healthz", func(resp http.ResponseWriter, req *http.Request) {
+		// TODO(al): Wire this up to tell the truth.
+		if _, err := resp.Write([]byte("ok")); err != nil {
+			klog.Errorf("resp.Write(): %v", err)
+		}
+	})
 
 	if metricsAt != *httpEndpoint {
 		// Run a separate handler for metrics.
