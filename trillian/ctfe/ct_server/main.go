@@ -52,7 +52,7 @@ import (
 	"github.com/tomasen/realip"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -98,13 +98,11 @@ const unknownRemoteUser = "UNKNOWN_REMOTE"
 
 // nolint:staticcheck
 func main() {
-	fmt.Println("ctfe main.go")
 	klog.InitFlags(nil)
 	flag.Parse()
 	ctx := context.Background()
 
 	// Initialize logging with OpenTelemetry support
-	fmt.Println("ctfe main.go: Initializing logging")
 	config.InitLogging()
 
 	keys.RegisterHandler(&keyspb.PEMKeyFile{}, pem.FromProto)
@@ -153,11 +151,10 @@ func main() {
 		metricsAt = *httpEndpoint
 	}
 
-	dialOpts := []grpc.DialOption{}
-	// Add OpenTelemetry gRPC client interceptor
-	dialOpts = append(dialOpts,
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-	)
+	// Use chained interceptor for propagation and logging
+	dialOpts := []grpc.DialOption{
+		logging.ChainedGRPCClientInterceptor(logging.GetLogger()),
+	}
 	if *trillianTLSCACertFile != "" {
 		creds, err := credentials.NewClientTLSFromFile(*trillianTLSCACertFile, "")
 		if err != nil {
@@ -331,29 +328,46 @@ func main() {
 		http.Handle("/metrics", promhttp.Handler())
 	}
 
-	// If we're enabling tracing we need to use an instrumented http.Handler.
-	var handler http.Handler
+	// Always use corsHandler (which wraps corsMux and otelhttp-wrapped handlers) unless opencensus tracing is enabled
+	var srv http.Server
 	if *tracing {
-		handler, err = opencensus.EnableHTTPServerTracing(*tracingProjectID, *tracingPercent)
+		handler, err := opencensus.EnableHTTPServerTracing(*tracingProjectID, *tracingPercent)
 		if err != nil {
 			klog.Exitf("Failed to initialize stackdriver / opencensus tracing: %v", err)
 		}
-	}
-
-	// Bring up the HTTP server and serve until we get a signal not to.
-	srv := http.Server{}
-	if *tlsCert != "" && *tlsKey != "" {
-		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
-		if err != nil {
-			klog.Errorf("failed to load TLS certificate/key: %v", err)
+		if *tlsCert != "" && *tlsKey != "" {
+			cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+			if err != nil {
+				klog.Errorf("failed to load TLS certificate/key: %v", err)
+			}
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{cert},
+				MinVersion:   tls.VersionTLS12,
+			}
+			srv = http.Server{Addr: *httpEndpoint, Handler: handler, TLSConfig: tlsConfig}
+		} else {
+			fmt.Printf("ctfe main.go: HTTP handler type: %T\n", handler)
+			srv = http.Server{Addr: *httpEndpoint, Handler: handler}
 		}
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			MinVersion:   tls.VersionTLS12,
-		}
-		srv = http.Server{Addr: *httpEndpoint, Handler: handler, TLSConfig: tlsConfig}
 	} else {
-		srv = http.Server{Addr: *httpEndpoint, Handler: handler}
+		// Always use corsHandler
+		if *tlsCert != "" && *tlsKey != "" {
+			cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+			if err != nil {
+				klog.Errorf("failed to load TLS certificate/key: %v", err)
+			}
+			tlsConfig := &tls.Config{
+				Certificates: []tls.Certificate{cert},
+				MinVersion:   tls.VersionTLS12,
+			}
+			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
+			fmt.Printf("ctfe main.go: 30: HTTP handler type: %T\n", wrappedHandler)
+			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler, TLSConfig: tlsConfig}
+		} else {
+			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
+			fmt.Printf("ctfe main.go: 40: HTTP handler type: %T\n", wrappedHandler)
+			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler}
+		}
 	}
 	if *httpIdleTimeout > 0 {
 		srv.IdleTimeout = *httpIdleTimeout
