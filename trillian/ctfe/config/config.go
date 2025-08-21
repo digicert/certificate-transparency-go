@@ -7,13 +7,11 @@ import (
 
 // InitLogging sets up the logging adapter for CTFE.
 func InitLogging() {
-	// Initialize OpenTelemetry
-	if err := logging.InitOpenTelemetry("ctfe"); err != nil {
-		panic(err)
-	}
+	// Initialize OpenTelemetry with config struct
+	logging.InitOpenTelemetry(logging.TelemetryConfigFromEnv())
 
 	// Initialize logging adapter with JSON format
-	logConfig := logging.Config{Level: logging.InfoLevel, Format: "json"}
-	adapter := adapters.NewLogrusAdapter(logConfig)
+	logCfg := logging.Config{Format: "json"}
+	adapter := adapters.NewLogrusAdapter(logCfg)
 	logging.SetLoggerAdapter(adapter)
 }
