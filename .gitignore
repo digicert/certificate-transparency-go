@@ -26,3 +26,4 @@
 /trillian_log_server
 /trillian_log_signer
 /trillian.json
+trillian/ctfe/ct_server/ctfe_server
