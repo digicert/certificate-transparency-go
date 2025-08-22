@@ -6,8 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/digicert/ctutils v0.1.2
-	// require github.com/digicert/ctutils v0.1.2 // commented out for localreplace: use local ctutils for development
+	github.com/digicert/ctutils v0.1.3
 	github.com/fullstorydev/grpcurl v1.9.3
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/mock v1.7.0-rc.1
@@ -147,6 +146,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-require github.com/cenkalti/backoff/v5 v5.0.2 // indirect
-
-replace github.com/digicert/ctutils => ../ctutils
+require (
+	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0 // indirect
+)

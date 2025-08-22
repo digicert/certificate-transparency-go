@@ -3,6 +3,13 @@ FROM golang:1.24.4-bookworm@sha256:8faa537d0690017d8000e38e1ed9ed4c5990d40a3022c
 ARG GOFLAGS=""
 ENV GOFLAGS=$GOFLAGS
 
+# Add GitHub token and GOPRIVATE for private module access
+ARG GITHUB_TOKEN
+ENV GITHUB_TOKEN=${GITHUB_TOKEN}
+ENV GOPRIVATE=github.com/digicert/ctutils
+ENV GONOSUMDB=github.com/digicert/ctutils
+RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
 WORKDIR /build
 
 COPY go.mod .
