@@ -18,6 +18,7 @@ require (
 	github.com/kylelemons/godebug v1.1.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/prometheus/client_golang v1.22.0
+	github.com/pseudomuto/protoc-gen-doc v1.5.1
 	github.com/rs/cors v1.11.1
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.9.1
@@ -30,6 +31,7 @@ require (
 	golang.org/x/crypto v0.41.0
 	golang.org/x/time v0.12.0
 	google.golang.org/grpc v1.74.2
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1
 	google.golang.org/protobuf v1.36.7
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/klog/v2 v2.130.1
@@ -147,6 +149,15 @@ require (
 )
 
 require (
+	github.com/Masterminds/goutils v1.1.1 // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
+	github.com/huandu/xstrings v1.2.0 // indirect
+	github.com/imdario/mergo v0.3.16 // indirect
+	github.com/mitchellh/copystructure v1.0.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.1 // indirect
+	github.com/mwitkow/go-proto-validators v0.2.0 // indirect
+	github.com/pseudomuto/protokit v0.2.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0 // indirect
 )
