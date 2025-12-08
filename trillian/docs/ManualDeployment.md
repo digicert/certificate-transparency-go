@@ -495,6 +495,42 @@ The addition of Prometheus for monitoring yields a system setup as shown.
 <img src="images/Deployment7Prometheus.png" width="650">
 
 
+## OpenTelemetry Distributed Tracing
+
+In addition to Prometheus metrics, CTFE supports OpenTelemetry-compliant
+distributed tracing via the [ctutils](https://github.com/digicert/ctutils)
+shared logging library. This enables end-to-end request tracing across the
+entire CT infrastructure (CTFE → Trillian log server/signer).
+
+Tracing is configured via environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OTEL_ENABLED` | Enable OpenTelemetry tracing | `false` |
+| `OTEL_EXPORTER` | Exporter type (`otlp` or `stdout`) | `stdout` |
+| `OTEL_COLLECTOR_ENDPOINT` | OTLP collector URL | `localhost:4317` |
+| `OTEL_SERVICE_NAME` | Service name for traces | `ctfe` |
+| `OTEL_SAMPLE_RATIO` | Sampling ratio (0.0-1.0) | `1.0` |
+
+Example configuration for CTFE:
+
+```bash
+export OTEL_ENABLED=true
+export OTEL_EXPORTER=otlp
+export OTEL_COLLECTOR_ENDPOINT=http://otel-collector:4317
+export OTEL_SERVICE_NAME=ctfe
+export OTEL_SAMPLE_RATIO=0.1  # 10% sampling in production
+```
+
+When enabled, CTFE will:
+- Wrap HTTP handlers with `otelhttp` for automatic span creation
+- Propagate trace context through gRPC calls to Trillian backends
+- Export traces to the configured OTLP collector (e.g., Jaeger, Zipkin)
+
+This allows operators to correlate requests across service boundaries and
+diagnose latency issues in the CT pipeline.
+
+
 ## DoS Protection
 
 A live production system that is exposed to the general Internet needs
