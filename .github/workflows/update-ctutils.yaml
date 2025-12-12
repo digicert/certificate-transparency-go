@@ -1,6 +1,7 @@
 name: Update ctutils dependencies
 
 on:
+  push: # Changed for testing
   workflow_dispatch:
     inputs:
       version:
@@ -25,7 +26,8 @@ jobs:
         env:
           GOPRIVATE: github.com/digicert/ctutils
           # We need this token because ctutils is private, even if this repo is public
-          VERSION_INPUT: ${{ github.event.inputs.version || 'latest' }}
+          # VERSION_INPUT: ${{ github.event.inputs.version || 'latest' }}
+          VERSION_INPUT: v0.1.9-test # HARDCODED FOR TEST
         run: |
           git config --global url."https://${{ secrets.CTUTILS_PRIVATE_REPO_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
           
