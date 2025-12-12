@@ -16,6 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Run govulncheck
     steps:
+      - name: Authenticate with private ctutils
+        run: |
+          git config --global url."https://oauth2:${{ secrets.CTUTILS_PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       - id: govulncheck
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
