@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/digicert/ctutils v0.1.11-test
+	github.com/digicert/ctutils v0.1.12-test
 	github.com/fullstorydev/grpcurl v1.9.3
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/mock v1.7.0-rc.1
