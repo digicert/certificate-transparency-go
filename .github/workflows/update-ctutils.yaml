@@ -22,23 +22,23 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Generate token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CT_APP_ID }}
+          private-key: ${{ secrets.CT_APP_PRIVATE_KEY }}
+          owner: digicert
+          repositories: ctutils
+
       - name: Update ctutils
         env:
           GOPRIVATE: github.com/digicert/ctutils
           # We need this token because ctutils is private, even if this repo is public
           VERSION_INPUT: ${{ github.event.inputs.version || 'latest' }}
         run: |
-          
-          # Debug: check if secret exists (will be masked in logs)
-          if [ -z "${{ secrets.CTUTILS_PRIVATE_REPO_TOKEN }}" ]; then
-            echo "::error::CTUTILS_PRIVATE_REPO_TOKEN is empty!"
-            exit 1
-          else
-            echo "Token is present."
-          fi
-
-          # Switch to oauth2 syntax which is more robust for PATs
-          git config --global url."https://oauth2:${{ secrets.CTUTILS_PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          # Switch to x-access-token syntax which is standard for App tokens
+          git config --global url."https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/".insteadOf "https://github.com/"
           
           echo "Updating ctutils to $VERSION_INPUT..."
           go get github.com/digicert/ctutils@$VERSION_INPUT
