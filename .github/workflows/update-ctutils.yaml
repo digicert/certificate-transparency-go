@@ -8,6 +8,9 @@ on:
         description: "Version to install (e.g. v0.1.9-test). Defaults to latest."
         required: false
         default: "latest"
+  push:
+    branches:
+      - RA-8279_improve_application_visibility_timing_logs
   schedule:
     - cron: "0 5 * * *" # Runs daily at 05:00 UTC
 
