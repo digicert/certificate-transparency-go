@@ -58,9 +58,18 @@ jobs:
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, Go, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
+    - name: Generate token
+      id: generate_token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.CT_APP_ID }}
+        private-key: ${{ secrets.CT_APP_PRIVATE_KEY }}
+        owner: digicert
+        repositories: ctutils
+
     - name: Authenticate with private ctutils
       run: |
-        git config --global url."https://oauth2:${{ secrets.CTUTILS_PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
+        git config --global url."https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
     - name: Autobuild
       env:

@@ -16,9 +16,18 @@ jobs:
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: go.mod
+      - name: Generate token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CT_APP_ID }}
+          private-key: ${{ secrets.CT_APP_PRIVATE_KEY }}
+          owner: digicert
+          repositories: ctutils
+
       - name: Authenticate with private ctutils
         run: |
-          git config --global url."https://oauth2:${{ secrets.CTUTILS_PRIVATE_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: golangci-lint
         env: 
