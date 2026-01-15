@@ -31,6 +31,13 @@ jobs:
           owner: digicert
           repositories: ctutils
 
+      - name: Debug Token
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          gh auth status
+
       - name: Update ctutils
         env:
           GOPRIVATE: github.com/digicert/ctutils
