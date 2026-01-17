@@ -33,7 +33,6 @@ import (
 	"syscall"
 	"time"
 
-	//"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
 	"github.com/digicert/ctutils/logging"
 	"github.com/google/certificate-transparency-go/trillian/ctfe"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/cache"

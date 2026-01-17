@@ -33,7 +33,6 @@ import (
 	"github.com/google/certificate-transparency-go/asn1"
 	"github.com/google/certificate-transparency-go/tls"
 
-	//"github.com/google/certificate-transparency-go/trillian/ctfe/logging"
 	"github.com/google/certificate-transparency-go/trillian/util"
 	"github.com/google/certificate-transparency-go/x509"
 	"github.com/google/certificate-transparency-go/x509util"
