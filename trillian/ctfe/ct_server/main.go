@@ -91,6 +91,7 @@ var (
 	cacheSize               = flag.Int("cache_size", -1, "Size parameter set to 0 makes cache of unlimited size")
 	cacheTTL                = flag.Duration("cache_ttl", -1*time.Second, "Providing 0 TTL turns expiring off")
 	trillianTLSCACertFile   = flag.String("trillian_tls_ca_cert_file", "", "CA certificate file to use for secure connections with Trillian server")
+	maxCertChainSize        = flag.Int64("max_cert_chain_size", 512000, "Maximum size of certificate chain in bytes for add-chain and add-pre-chain endpoints (default: 512000 bytes = 500KB)")
 )
 
 const unknownRemoteUser = "UNKNOWN_REMOTE"
@@ -317,7 +318,7 @@ func main() {
 		go func() {
 			mux := http.NewServeMux()
 			mux.Handle("/metrics", promhttp.Handler())
-			metricsServer := http.Server{Addr: metricsAt, Handler: mux}
+			metricsServer := http.Server{Addr: metricsAt, Handler: mux, MaxHeaderBytes: 128 * 1024}
 			err := metricsServer.ListenAndServe()
 			klog.Warningf("Metrics server exited: %v", err)
 		}()
@@ -342,12 +343,13 @@ func main() {
 				Certificates: []tls.Certificate{cert},
 				MinVersion:   tls.VersionTLS12,
 			}
-			srv = http.Server{Addr: *httpEndpoint, Handler: handler, TLSConfig: tlsConfig}
+			srv = http.Server{Addr: *httpEndpoint, Handler: handler, TLSConfig: tlsConfig, MaxHeaderBytes: 128 * 1024}
 		} else {
-			srv = http.Server{Addr: *httpEndpoint, Handler: handler}
+			srv = http.Server{Addr: *httpEndpoint, Handler: handler, MaxHeaderBytes: 128 * 1024}
 		}
 	} else {
 		// Always use corsHandler
+		wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
 		if *tlsCert != "" && *tlsKey != "" {
 			cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 			if err != nil {
@@ -357,11 +359,9 @@ func main() {
 				Certificates: []tls.Certificate{cert},
 				MinVersion:   tls.VersionTLS12,
 			}
-			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
-			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler, TLSConfig: tlsConfig}
+			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler, TLSConfig: tlsConfig, MaxHeaderBytes: 128 * 1024}
 		} else {
-			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
-			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler}
+			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler, MaxHeaderBytes: 128 * 1024}
 		}
 	}
 	if *httpIdleTimeout > 0 {
@@ -472,7 +472,12 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
-		mux.Handle(lhp+path, logging.Middleware(handler))
+		finalHandler := logging.Middleware(handler)
+		if strings.HasSuffix(path, "/add-chain") || strings.HasSuffix(path, "/add-pre-chain") {
+			klog.Infof("Applying MaxBytesHandler to %s with limit %d bytes", lhp+path, *maxCertChainSize)
+			finalHandler = http.MaxBytesHandler(finalHandler, *maxCertChainSize)
+		}
+		mux.Handle(lhp+path, finalHandler)
 	}
 	return inst, nil
 }
