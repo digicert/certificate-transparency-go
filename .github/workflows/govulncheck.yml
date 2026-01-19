@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - master
+      - RA-8661_apply_updates_from_google
   pull_request:
     branches:
       - master
+      - RA-8661_apply_updates_from_google
 
 permissions:
   contents: read
