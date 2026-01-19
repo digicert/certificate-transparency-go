@@ -54,6 +54,7 @@ jobs:
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
           branch: chore/update-ctutils-test
+          base: RA-8661_apply_updates_from_google
           delete-branch: true
           title: "chore(deps): update ctutils"
           body: |
