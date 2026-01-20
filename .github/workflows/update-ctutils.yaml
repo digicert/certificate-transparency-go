@@ -31,8 +31,6 @@ jobs:
           owner: digicert
           repositories: ctutils
 
-
-
       - name: Update ctutils
         env:
           GOPRIVATE: github.com/digicert/ctutils
