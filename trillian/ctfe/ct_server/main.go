@@ -102,7 +102,8 @@ func main() {
 	ctx := context.Background()
 
 	// Initialize logging with OpenTelemetry support
-	config.InitLogging()
+	shutdown := config.InitLogging()
+	defer shutdown()
 
 	keys.RegisterHandler(&keyspb.PEMKeyFile{}, pem.FromProto)
 	keys.RegisterHandler(&keyspb.PrivateKey{}, der.FromProto)
