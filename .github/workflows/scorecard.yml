@@ -12,7 +12,7 @@ on:
   schedule:
     - cron: '34 20 * * 1'
   push:
-    branches: [ "master", "RA-8661_apply_updates_from_google" ]
+    branches: [ "master" ]
 
 # Declare default permissions as read only.
 permissions: read-all
