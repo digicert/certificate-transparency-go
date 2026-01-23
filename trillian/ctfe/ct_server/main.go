@@ -474,7 +474,7 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
-		wrappedHandler := handler
+		var wrappedHandler http.Handler = handler
 		if strings.HasSuffix(path, "/add-chain") || strings.HasSuffix(path, "/add-pre-chain") {
 			klog.Infof("Applying MaxBytesHandler to %s with limit %d bytes", lhp+path, *maxCertChainSize)
 			wrappedHandler = http.MaxBytesHandler(wrappedHandler, *maxCertChainSize)
