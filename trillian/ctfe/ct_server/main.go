@@ -51,6 +51,7 @@ import (
 	"github.com/tomasen/realip"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
+	"go.opencensus.io/plugin/ochttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
@@ -246,8 +247,6 @@ func main() {
 	// This is safe for CT log handlers because the log is public and
 	// unauthenticated so cross-site scripting attacks are not a concern.
 	corsMux := http.NewServeMux()
-	corsHandler := cors.AllowAll().Handler(corsMux)
-	http.Handle("/", corsHandler)
 
 	// Register handlers for all the configured logs using the correct RPC
 	// client.
@@ -323,47 +322,49 @@ func main() {
 			klog.Warningf("Metrics server exited: %v", err)
 		}()
 	} else {
-		// Handle metrics on the DefaultServeMux.
-		http.Handle("/metrics", promhttp.Handler())
+		// Handle metrics on the main mux.
+		corsMux.Handle("/metrics", promhttp.Handler())
 	}
 
-	// Always use corsHandler (which wraps corsMux and otelhttp-wrapped handlers) unless opencensus tracing is enabled
-	var srv http.Server
+	// Define the middleware pipeline from the inside out: Logic -> CORS -> Tracing.
+	// This ensures tracing is the outermost layer, capturing all request details.
+
+	// 1. The inner logic (the multiplexer) is 'corsMux'.
+
+	// 2. Wrap the Mux in CORS security.
+	corsHandler := cors.AllowAll().Handler(corsMux)
+
+	// 3. Wrap the CORS-handler in Distributed Tracing (Observability).
+	var finalHandler http.Handler
 	if *tracing {
+		// Legacy OpenCensus Path
 		handler, err := opencensus.EnableHTTPServerTracing(*tracingProjectID, *tracingPercent)
 		if err != nil {
 			klog.Exitf("Failed to initialize stackdriver / opencensus tracing: %v", err)
 		}
-		if *tlsCert != "" && *tlsKey != "" {
-			cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
-			if err != nil {
-				klog.Errorf("failed to load TLS certificate/key: %v", err)
-			}
-			tlsConfig := &tls.Config{
-				Certificates: []tls.Certificate{cert},
-				MinVersion:   tls.VersionTLS12,
-			}
-			srv = http.Server{Addr: *httpEndpoint, Handler: handler, TLSConfig: tlsConfig}
-		} else {
-			srv = http.Server{Addr: *httpEndpoint, Handler: handler}
+		// Explicitly attach our handler chain; avoids reliance on http.DefaultServeMux.
+		if h, ok := handler.(*ochttp.Handler); ok {
+			h.Handler = corsHandler
 		}
+		finalHandler = handler
 	} else {
-		// Always use corsHandler
-		if *tlsCert != "" && *tlsKey != "" {
-			cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
-			if err != nil {
-				klog.Errorf("failed to load TLS certificate/key: %v", err)
-			}
-			tlsConfig := &tls.Config{
-				Certificates: []tls.Certificate{cert},
-				MinVersion:   tls.VersionTLS12,
-			}
-			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
-			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler, TLSConfig: tlsConfig}
-		} else {
-			wrappedHandler := otelhttp.NewHandler(corsHandler, "ctfe")
-			srv = http.Server{Addr: *httpEndpoint, Handler: wrappedHandler}
+		// Modern OpenTelemetry Path
+		finalHandler = otelhttp.NewHandler(corsHandler, "ctfe")
+	}
+
+	var srv http.Server
+	if *tlsCert != "" && *tlsKey != "" {
+		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+		if err != nil {
+			klog.Errorf("failed to load TLS certificate/key: %v", err)
 		}
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS12,
+		}
+		srv = http.Server{Addr: *httpEndpoint, Handler: finalHandler, TLSConfig: tlsConfig}
+	} else {
+		srv = http.Server{Addr: *httpEndpoint, Handler: finalHandler}
 	}
 	if *httpIdleTimeout > 0 {
 		srv.IdleTimeout = *httpIdleTimeout

@@ -117,7 +117,7 @@ require (
 	go.etcd.io/etcd/tests/v3 v3.6.1 // indirect
 	go.etcd.io/gofail v0.2.0 // indirect
 	go.etcd.io/raft/v3 v3.6.0 // indirect
-	go.opencensus.io v0.24.0 // indirect
+	go.opencensus.io v0.24.0
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.62.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
