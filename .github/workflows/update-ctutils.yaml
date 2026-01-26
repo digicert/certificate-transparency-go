@@ -37,7 +37,6 @@ jobs:
         env:
           GOPRIVATE: github.com/digicert/ctutils
           GONOSUMDB: github.com/digicert/ctutils
-          GONOPROXY: github.com/digicert/ctutils
           GITHUB_APP_TOKEN: ${{ steps.generate_token.outputs.token }}
           VERSION_INPUT: ${{ github.event.inputs.version || 'latest' }}
         run: |
