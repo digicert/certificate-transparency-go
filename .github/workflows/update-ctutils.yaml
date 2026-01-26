@@ -48,18 +48,27 @@ jobs:
           RESOLVED_VERSION="$VERSION_INPUT"
           if [ "$VERSION_INPUT" = "latest" ]; then
             echo "Resolving latest ctutils release from GitHub API..."
+            # Try getting the official 'latest' release first
             API_RESPONSE=$(curl -sS -H "Authorization: Bearer $GITHUB_APP_TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/digicert/ctutils/releases/latest)
+              https://api.github.com/repos/digicert/ctutils/releases/latest || true)
             
             RESOLVED_VERSION=$(printf '%s' "$API_RESPONSE" | jq -r '.tag_name // empty')
             
             if [ -z "$RESOLVED_VERSION" ] || [ "$RESOLVED_VERSION" = "null" ]; then
-              echo "Error: Unable to resolve latest ctutils release tag from GitHub API."
+              echo "Official 'latest' release not found (possibly all pre-releases). Falling back to most recent release..."
+              API_RESPONSE=$(curl -sS -H "Authorization: Bearer $GITHUB_APP_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/digicert/ctutils/releases?per_page=1")
+              RESOLVED_VERSION=$(printf '%s' "$API_RESPONSE" | jq -r '.[0].tag_name // empty')
+            fi
+
+            if [ -z "$RESOLVED_VERSION" ] || [ "$RESOLVED_VERSION" = "null" ]; then
+              echo "Error: Unable to resolve any ctutils release tag from GitHub API."
               echo "API response was: $API_RESPONSE"
               exit 1
             fi
-            echo "Resolved latest version: $RESOLVED_VERSION"
+            echo "Resolved version: $RESOLVED_VERSION"
           fi
 
           echo "VERSION_USED=$RESOLVED_VERSION" >> "$GITHUB_ENV"
