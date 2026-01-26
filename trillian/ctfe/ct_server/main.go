@@ -474,6 +474,7 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
+		// This may look like double-wrapping, but these serve distinct purposes - otel tracing vs logging. We need both.
 		mux.Handle(lhp+path, logging.Middleware(handler))
 	}
 	return inst, nil
