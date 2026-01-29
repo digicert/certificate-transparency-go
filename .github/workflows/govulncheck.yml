@@ -34,7 +34,7 @@ jobs:
         env:
           GOPRIVATE: github.com/digicert/ctutils
           GONOSUMDB: github.com/digicert/ctutils
-      GONOPROXY: github.com/digicert/ctutils
+          GONOPROXY: github.com/digicert/ctutils
         with:
           go-version-file: go.mod
           go-package: ./...

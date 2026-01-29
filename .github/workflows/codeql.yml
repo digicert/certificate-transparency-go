@@ -75,7 +75,7 @@ jobs:
       env:
         GOPRIVATE: github.com/digicert/ctutils
         GONOSUMDB: github.com/digicert/ctutils
-      GONOPROXY: github.com/digicert/ctutils
+        GONOPROXY: github.com/digicert/ctutils
       uses: github/codeql-action/autobuild@181d5eefc20863364f96762470ba6f862bdef56b # v3.29.2
 
     # ℹ️ Command-line programs to run using the OS shell.
