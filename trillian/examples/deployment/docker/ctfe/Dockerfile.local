@@ -1,0 +1,41 @@
+# Dockerfile.local - For local development only
+# Build from ~/workspace: docker build -f certificate-transparency-go/trillian/examples/deployment/docker/ctfe/Dockerfile.local -t ctfe:local .
+
+FROM golang:1.24.4-bookworm AS build
+
+WORKDIR /workspace
+
+ARG GOFLAGS=""
+ENV GOFLAGS=$GOFLAGS
+ENV GOPRIVATE=github.com/digicert/ctutils
+ENV GONOSUMDB=github.com/digicert/ctutils
+
+# Copy all workspace repos
+COPY ctutils/ ctutils/
+COPY certificate-transparency-go/ certificate-transparency-go/
+
+WORKDIR /workspace/certificate-transparency-go
+
+# Download dependencies using local ctutils via replace directive
+RUN go mod download
+
+# Build the CTFE server
+RUN go install ./trillian/ctfe/ct_server
+
+# Run the licensing tool: (temporarily disabled for local development)
+# The licensing step fetches modules during build and can be flaky in local
+# environments; comment out to speed local iteration. Re-enable before release.
+# RUN GOPROXY=https://proxy.golang.org,direct \
+#     go run github.com/google/go-licenses/v2 save ./trillian/ctfe/ct_server --save_path /THIRD_PARTY_NOTICES
+
+# Ensure THIRD_PARTY_NOTICES exists so final stage COPY succeeds even when
+# the licensing step is disabled during local development.
+RUN mkdir -p /THIRD_PARTY_NOTICES && touch /THIRD_PARTY_NOTICES/NOTICE || true
+
+# Make a minimal image
+FROM gcr.io/distroless/base-debian12@sha256:201ef9125ff3f55fda8e0697eff0b3ce9078366503ef066653635a3ac3ed9c26
+
+COPY --from=build /go/bin/ct_server /
+COPY --from=build /THIRD_PARTY_NOTICES /THIRD_PARTY_NOTICES
+
+ENTRYPOINT ["/ct_server"]
