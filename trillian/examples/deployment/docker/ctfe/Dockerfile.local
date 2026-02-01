@@ -6,21 +6,21 @@ FROM golang:1.24.4-bookworm AS build
 WORKDIR /workspace
 
 ARG GOFLAGS=""
+ARG GOPROXY=""
 ENV GOFLAGS=$GOFLAGS
+ENV GOPROXY=$GOPROXY
 ENV GOPRIVATE=github.com/digicert/ctutils
 ENV GONOSUMDB=github.com/digicert/ctutils
 
 # Copy all workspace repos
+# go.mod has replace directive and cleaned go.sum added by build script
 COPY ctutils/ ctutils/
 COPY certificate-transparency-go/ certificate-transparency-go/
 
 WORKDIR /workspace/certificate-transparency-go
 
-# Download dependencies using local ctutils via replace directive
-RUN go mod download
-
-# Build the CTFE server
-RUN go install ./trillian/ctfe/ct_server
+# Build directly - go install will use local ctutils via replace directive
+RUN --mount=type=cache,target=/go/pkg/mod go install ./trillian/ctfe/ct_server
 
 # Run the licensing tool: (temporarily disabled for local development)
 # The licensing step fetches modules during build and can be flaky in local
