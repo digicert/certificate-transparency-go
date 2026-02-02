@@ -509,8 +509,18 @@ Tracing is configured via environment variables:
 | `OTEL_ENABLED` | Enable OpenTelemetry tracing | `false` |
 | `OTEL_EXPORTER` | Exporter type (`otlp` or `stdout`) | `stdout` |
 | `OTEL_COLLECTOR_ENDPOINT` | OTLP collector URL | `localhost:4317` |
+| `OTEL_INSECURE` | Allow insecure (HTTP) OTLP connections | `false` |
 | `OTEL_SERVICE_NAME` | Service name for traces | `ctfe` |
 | `OTEL_SAMPLE_RATIO` | Sampling ratio (0.0-1.0) | `1.0` |
+
+### Logging
+
+The following environment variables control the logging format and level:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LOG_FORMAT` | Format for log output (`text` or `json`) | `text` |
+| `LOG_LEVEL` | Logging level (`DEBUG`, `INFO`, `WARN`, `ERROR`) | `INFO` |
 
 Example configuration for CTFE:
 

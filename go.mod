@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/digicert/ctutils v0.1.25-test.0.20260122140359-74e4746b3e02
+	github.com/digicert/ctutils v0.1.27-test
 	github.com/fullstorydev/grpcurl v1.9.3
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/mock v1.7.0-rc.1
@@ -119,7 +119,7 @@ require (
 	go.etcd.io/etcd/tests/v3 v3.6.1 // indirect
 	go.etcd.io/gofail v0.2.0 // indirect
 	go.etcd.io/raft/v3 v3.6.0 // indirect
-	go.opencensus.io v0.24.0 // indirect
+	go.opencensus.io v0.24.0
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.62.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0
