@@ -7,6 +7,7 @@ transparency Log.
  - [Codebase Structure](#codebase-structure)
  - [Deployment](#deployment)
  - [Operation](#operation)
+ - [Observability](#observability)
 
 
 ## Codebase Structure
@@ -58,3 +59,24 @@ Once all of the components for a Trillian-based CT Log have been deployed,
 log operators need to monitor and maintain the Log. The
 [Operation document](docs/Operation.md) describes key considerations and gotchas
 for this ongoing process.
+
+
+## Observability
+
+CTFE supports OpenTelemetry-compliant distributed tracing via the
+[ctutils](https://github.com/digicert/ctutils) shared logging library. This
+enables end-to-end request tracing from HTTP requests through gRPC calls to
+Trillian backends.
+
+Configuration is via environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `OTEL_ENABLED` | Enable OpenTelemetry (`true`/`false`) |
+| `OTEL_EXPORTER` | Exporter type (`otlp` or `stdout`) |
+| `OTEL_COLLECTOR_ENDPOINT` | OTLP collector URL |
+| `OTEL_SERVICE_NAME` | Service name for traces |
+| `OTEL_SAMPLE_RATIO` | Sampling ratio (0.0-1.0) |
+
+See the [Manual Deployment document](docs/ManualDeployment.md#opentelemetry-distributed-tracing)
+for detailed configuration instructions.

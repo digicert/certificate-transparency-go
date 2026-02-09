@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/digicert/ctutils/logging"
 	"github.com/google/certificate-transparency-go/asn1"
 	"github.com/google/certificate-transparency-go/schedule"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/cache"
@@ -103,7 +104,7 @@ type Instance struct {
 func (i *Instance) RunUpdateSTH(ctx context.Context, period time.Duration) {
 	c := i.li.instanceOpts.Validated.Config
 	klog.Infof("Start internal get-sth operations on %v (%d)", c.Prefix, c.LogId)
-	schedule.Every(ctx, period, func(ctx context.Context) {
+	logging.ScheduleWithSpan(ctx, period, "ctfe_internal_sth_force", schedule.Every, func(ctx context.Context) {
 		klog.V(1).Infof("Force internal get-sth for %v (%d)", c.Prefix, c.LogId)
 		if _, err := i.li.getSTH(ctx); err != nil {
 			klog.Warningf("Failed to retrieve STH for %v (%d): %v", c.Prefix, c.LogId, err)

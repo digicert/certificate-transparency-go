@@ -33,8 +33,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/digicert/ctutils/logging"
 	"github.com/google/certificate-transparency-go/trillian/ctfe"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/cache"
+	"github.com/google/certificate-transparency-go/trillian/ctfe/config"
 	"github.com/google/certificate-transparency-go/trillian/ctfe/configpb"
 	"github.com/google/trillian"
 	"github.com/google/trillian/crypto/keys"
@@ -49,6 +51,8 @@ import (
 	"github.com/tomasen/realip"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
+	"go.opencensus.io/plugin/ochttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -98,6 +102,10 @@ func main() {
 	flag.Parse()
 	ctx := context.Background()
 
+	// Initialize logging with OpenTelemetry support
+	shutdown := config.InitLogging()
+	defer shutdown()
+
 	keys.RegisterHandler(&keyspb.PEMKeyFile{}, pem.FromProto)
 	keys.RegisterHandler(&keyspb.PrivateKey{}, der.FromProto)
 	keys.RegisterHandler(&keyspb.PKCS11Config{}, func(ctx context.Context, pb proto.Message) (crypto.Signer, error) {
@@ -136,6 +144,7 @@ func main() {
 	}
 
 	klog.CopyStandardLogTo("WARNING")
+
 	klog.Info("**** CT HTTP Server Starting ****")
 
 	metricsAt := *metricsEndpoint
@@ -143,7 +152,10 @@ func main() {
 		metricsAt = *httpEndpoint
 	}
 
-	dialOpts := []grpc.DialOption{}
+	// Use chained interceptor for propagation and logging
+	dialOpts := []grpc.DialOption{
+		logging.ChainedGRPCClientInterceptor(logging.GetLogger()),
+	}
 	if *trillianTLSCACertFile != "" {
 		creds, err := credentials.NewClientTLSFromFile(*trillianTLSCACertFile, "")
 		if err != nil {
@@ -235,8 +247,6 @@ func main() {
 	// This is safe for CT log handlers because the log is public and
 	// unauthenticated so cross-site scripting attacks are not a concern.
 	corsMux := http.NewServeMux()
-	corsHandler := cors.AllowAll().Handler(corsMux)
-	http.Handle("/", corsHandler)
 
 	// Register handlers for all the configured logs using the correct RPC
 	// client.
@@ -312,21 +322,37 @@ func main() {
 			klog.Warningf("Metrics server exited: %v", err)
 		}()
 	} else {
-		// Handle metrics on the DefaultServeMux.
-		http.Handle("/metrics", promhttp.Handler())
+		// Handle metrics on the main mux.
+		corsMux.Handle("/metrics", promhttp.Handler())
 	}
 
-	// If we're enabling tracing we need to use an instrumented http.Handler.
-	var handler http.Handler
+	// Define the middleware pipeline from the inside out: Logic -> CORS -> Tracing.
+	// This ensures tracing is the outermost layer, capturing all request details.
+
+	// 1. The inner logic (the multiplexer) is 'corsMux'.
+
+	// 2. Wrap the Mux in CORS security.
+	corsHandler := cors.AllowAll().Handler(corsMux)
+
+	// 3. Wrap the CORS-handler in Distributed Tracing (Observability).
+	var finalHandler http.Handler
 	if *tracing {
-		handler, err = opencensus.EnableHTTPServerTracing(*tracingProjectID, *tracingPercent)
+		// Legacy OpenCensus Path
+		handler, err := opencensus.EnableHTTPServerTracing(*tracingProjectID, *tracingPercent)
 		if err != nil {
 			klog.Exitf("Failed to initialize stackdriver / opencensus tracing: %v", err)
 		}
+		// Explicitly attach our handler chain; avoids reliance on http.DefaultServeMux.
+		if h, ok := handler.(*ochttp.Handler); ok {
+			h.Handler = corsHandler
+		}
+		finalHandler = handler
+	} else {
+		// Modern OpenTelemetry Path
+		finalHandler = otelhttp.NewHandler(corsHandler, "ctfe")
 	}
 
-	// Bring up the HTTP server and serve until we get a signal not to.
-	srv := http.Server{}
+	var srv http.Server
 	if *tlsCert != "" && *tlsKey != "" {
 		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
 		if err != nil {
@@ -336,17 +362,17 @@ func main() {
 			Certificates: []tls.Certificate{cert},
 			MinVersion:   tls.VersionTLS12,
 		}
-		srv = http.Server{Addr: *httpEndpoint, Handler: handler, TLSConfig: tlsConfig}
+		srv = http.Server{Addr: *httpEndpoint, Handler: finalHandler, TLSConfig: tlsConfig}
 	} else {
-		srv = http.Server{Addr: *httpEndpoint, Handler: handler}
+		srv = http.Server{Addr: *httpEndpoint, Handler: finalHandler}
 	}
 	if *httpIdleTimeout > 0 {
 		srv.IdleTimeout = *httpIdleTimeout
 	}
 
 	shutdownWG := new(sync.WaitGroup)
+	shutdownWG.Add(1)
 	go awaitSignal(func() {
-		shutdownWG.Add(1)
 		defer shutdownWG.Done()
 		// Allow 60s for any pending requests to finish then terminate any stragglers
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
@@ -448,7 +474,8 @@ func setupAndRegister(ctx context.Context, client trillian.TrillianLogClient, de
 		return nil, err
 	}
 	for path, handler := range inst.Handlers {
-		mux.Handle(lhp+path, handler)
+		// This may look like double-wrapping, but these serve distinct purposes - otel tracing vs logging. We need both.
+		mux.Handle(lhp+path, logging.Middleware(handler))
 	}
 	return inst, nil
 }
